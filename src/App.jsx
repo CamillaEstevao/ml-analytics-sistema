@@ -478,6 +478,94 @@ const filteredData = useMemo(() => {
     return insights
   }, [skuDetailData, skuChartData, skuResumo])
 
+  const skuAlerts = useMemo(() => {
+    if (!skuDetailData.length) return []
+
+    const alerts = []
+    const ultimoRegistro = skuDetailData[0]
+
+    const conversaoAtual = percentToNumber(ultimoRegistro["Conversão %"])
+
+    if (conversaoAtual === 0) {
+      alerts.push({
+        type: "danger",
+        icon: "🚨",
+        title: "Conversão zerada",
+        text: "O SKU está recebendo visitas sem converter vendas.",
+      })
+    }
+
+    const quedaTexto =
+      ultimoRegistro["Comparado c/ o dia anterior Vendas Brutas"] || ""
+
+    if (String(quedaTexto).includes("▼")) {
+      const valor =
+        Number(
+          String(quedaTexto)
+            .replace("▼", "")
+            .replace("%", "")
+            .replace(",", ".")
+            .trim()
+        ) || 0
+
+      if (valor >= 30) {
+        alerts.push({
+          type: "warning",
+          icon: "⚠️",
+          title: "Queda brusca",
+          text: `As vendas caíram ${valor.toFixed(1).replace(".", ",")}% no último dia.`,
+        })
+      }
+    }
+
+    const visitas = Number(ultimoRegistro["Visitas"]) || 0
+
+    if (visitas < 10) {
+      alerts.push({
+        type: "warning",
+        icon: "📉",
+        title: "Baixo tráfego",
+        text: "O SKU está recebendo poucas visitas.",
+      })
+    }
+
+    const altaTexto =
+      ultimoRegistro["Comparado c/ o dia anterior Vendas Brutas"] || ""
+
+    if (String(altaTexto).includes("▲")) {
+      const valor =
+        Number(
+          String(altaTexto)
+            .replace("▲", "")
+            .replace("%", "")
+            .replace(",", ".")
+            .trim()
+        ) || 0
+
+      if (valor >= 40) {
+        alerts.push({
+          type: "success",
+          icon: "🔥",
+          title: "Crescimento acelerado",
+          text: `O SKU cresceu ${valor.toFixed(1).replace(".", ",")}% no último dia.`,
+        })
+      }
+    }
+
+    const vendas = moneyToNumber(ultimoRegistro["Vendas Brutas"])
+
+    if (vendas <= 0) {
+      alerts.push({
+        type: "danger",
+        icon: "🛑",
+        title: "Sem vendas",
+        text: "O SKU não teve vendas no último dia.",
+      })
+    }
+
+    return alerts
+  }, [skuDetailData])
+
   function exportCSV() {
     if (!filteredData.length) return
 
@@ -913,6 +1001,33 @@ const filteredData = useMemo(() => {
                   formatter={(v) => `${String(v).replace(".", ",")}%`}
                 />
               </section>
+
+              {skuAlerts.length > 0 && (
+                <section className="alerts-card">
+                  <div className="table-head">
+                    <div>
+                      <h3>Alertas automáticos</h3>
+                      <p>Problemas e oportunidades detectadas automaticamente</p>
+                    </div>
+                  </div>
+
+                  <div className="alerts-grid">
+                    {skuAlerts.map((alert, index) => (
+                      <div
+                        key={index}
+                        className={`alert-item ${alert.type}`}
+                      >
+                        <span>{alert.icon}</span>
+
+                        <div>
+                          <strong>{alert.title}</strong>
+                          <p>{alert.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section className="insights-card">
                 <div className="table-head">

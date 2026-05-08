@@ -952,6 +952,75 @@ tbody tr:hover {
   line-height: 1.5;
 }
 
+.alerts-card {
+  background: #ffffff;
+  border: 1px solid #dfe8f5;
+  border-radius: 26px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.065);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 0 22px 22px;
+}
+
+.alert-item {
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid transparent;
+}
+
+.alert-item span {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.alert-item strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.alert-item p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.alert-item.danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.alert-item.danger strong {
+  color: #b91c1c;
+}
+
+.alert-item.warning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.alert-item.warning strong {
+  color: #c2410c;
+}
+
+.alert-item.success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.alert-item.success strong {
+  color: #15803d;
+}
+
 /* Responsivo do modal */
 @media (max-width: 1250px) {
   .sku-modal .chart-grid.modal-chart-grid {
