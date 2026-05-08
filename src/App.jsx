@@ -80,6 +80,61 @@ function getVariationClass(value) {
   return ""
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function calcularScoreSku(item, conversao) {
+  const vendasScore = Math.min((item.vendas / 12000) * 30, 30)
+  const conversaoScore = Math.min((conversao / 12) * 25, 25)
+  const visitasScore = Math.min((item.visitas / 2500) * 15, 15)
+  const qtdScore = Math.min((item.quantidade / 120) * 15, 15)
+  const crescimentoBonus = Math.min(item.altasFortes * 3, 10)
+
+  const semVendaPenalty =
+    item.registros > 0 ? (item.diasSemVenda / item.registros) * 22 : 0
+  const quedaPenalty = Math.min(item.quedasFortes * 4, 18)
+
+  return Math.round(
+    clamp(
+      vendasScore +
+        conversaoScore +
+        visitasScore +
+        qtdScore +
+        crescimentoBonus -
+        semVendaPenalty -
+        quedaPenalty +
+        15,
+      0,
+      100
+    )
+  )
+}
+
+function medalClass(index) {
+  if (index === 0) return "gold"
+  if (index === 1) return "silver"
+  if (index === 2) return "bronze"
+  return ""
+}
+
+function scoreClass(score) {
+  if (score >= 75) return "healthy"
+  if (score >= 45) return "warning"
+  return "critical"
+}
+
+function heatClass(value, max) {
+  if (!max || value <= 0) return "heat-0"
+  const ratio = value / max
+
+  if (ratio >= 0.85) return "heat-5"
+  if (ratio >= 0.65) return "heat-4"
+  if (ratio >= 0.45) return "heat-3"
+  if (ratio >= 0.25) return "heat-2"
+  return "heat-1"
+}
+
 function App() {
   const [data, setData] = useState([])
   const [search, setSearch] = useState("")
@@ -273,6 +328,7 @@ const filteredData = useMemo(() => {
     filteredData.forEach((row) => {
       const sku = row["SKU"] || "-"
       const produto = row["Produto"] || "-"
+      const dataAnalise = row["Data Análise"] || "-"
       const vendas = moneyToNumber(row["Vendas Brutas"])
       const visitas = Number(row["Visitas"]) || 0
       const quantidade = Number(row["Quantidade de Vendas"]) || 0
@@ -291,6 +347,7 @@ const filteredData = useMemo(() => {
           quedasFortes: 0,
           altasFortes: 0,
           registros: 0,
+          daily: {},
         }
       }
 
@@ -298,6 +355,7 @@ const filteredData = useMemo(() => {
       grouped[sku].visitas += visitas
       grouped[sku].quantidade += quantidade
       grouped[sku].registros += 1
+      grouped[sku].daily[dataAnalise] = (grouped[sku].daily[dataAnalise] || 0) + vendas
 
       if (conversao > 0) {
         grouped[sku].conversaoTotal += conversao
@@ -349,21 +407,43 @@ const filteredData = useMemo(() => {
           ? item.conversaoTotal / item.conversaoCount
           : 0
 
+      const diasOrdenados = Object.entries(item.daily).sort((a, b) =>
+        brDateToISO(a[0]).localeCompare(brDateToISO(b[0]))
+      )
+
+      const ultimo = diasOrdenados[diasOrdenados.length - 1]?.[1] || 0
+      const anterior = diasOrdenados[diasOrdenados.length - 2]?.[1] || 0
+
+      let trend = 0
+      if (anterior > 0) {
+        trend = ((ultimo - anterior) / anterior) * 100
+      } else if (ultimo > 0) {
+        trend = 100
+      }
+
+      const baseItem = {
+        ...item,
+        conversao,
+        ticketMedio: item.quantidade > 0 ? item.vendas / item.quantidade : 0,
+        trend,
+      }
+
+      const score = calcularScoreSku(baseItem, conversao)
+
       let status = "Saudável"
       let statusClass = "healthy"
 
-      if (item.diasSemVenda >= 5 || item.quedasFortes >= 3 || conversao < 2) {
+      if (score < 45) {
         status = "Crítico"
         statusClass = "critical"
-      } else if (item.diasSemVenda >= 2 || item.quedasFortes >= 1 || conversao < 5) {
+      } else if (score < 75) {
         status = "Atenção"
         statusClass = "warning"
       }
 
       return {
-        ...item,
-        conversao,
-        ticketMedio: item.quantidade > 0 ? item.vendas / item.quantidade : 0,
+        ...baseItem,
+        score,
         status,
         statusClass,
       }
@@ -400,6 +480,29 @@ const filteredData = useMemo(() => {
       .sort((a, b) => b.altasFortes - a.altasFortes)
       .slice(0, 10)
   }, [performanceBySku])
+
+  const heatmapData = useMemo(() => {
+    const datas = Array.from(
+      new Set(filteredData.map((row) => row["Data Análise"]).filter(Boolean))
+    )
+      .sort((a, b) => brDateToISO(a).localeCompare(brDateToISO(b)))
+      .slice(-8)
+
+    const skus = [...performanceBySku]
+      .sort((a, b) => b.vendas - a.vendas)
+      .slice(0, 8)
+
+    const maxValue = Math.max(
+      ...skus.flatMap((sku) => datas.map((data) => sku.daily?.[data] || 0)),
+      0
+    )
+
+    return {
+      datas,
+      skus,
+      maxValue,
+    }
+  }, [filteredData, performanceBySku])
 
   const skuDetailData = useMemo(() => {
     if (!selectedSku) return []
@@ -505,6 +608,21 @@ const filteredData = useMemo(() => {
 
     const insights = []
 
+    const vendasSpark = skuChartData.map((item) => ({
+      date: item.date,
+      value: item.vendas,
+    }))
+
+    const visitasSpark = skuChartData.map((item) => ({
+      date: item.date,
+      value: item.visitas,
+    }))
+
+    const conversaoSpark = skuChartData.map((item) => ({
+      date: item.date,
+      value: item.conversao,
+    }))
+
     const melhorDia = [...skuChartData].sort(
       (a, b) => b.vendas - a.vendas
     )[0]
@@ -514,6 +632,8 @@ const filteredData = useMemo(() => {
         icon: "🔥",
         title: "Melhor dia de vendas",
         text: `${melhorDia.date} com ${numberToMoney(melhorDia.vendas)}`,
+        color: "#2563eb",
+        data: vendasSpark,
       })
     }
 
@@ -549,6 +669,8 @@ const filteredData = useMemo(() => {
         icon: "⚠️",
         title: "Maior queda",
         text: `${maiorQueda.texto} em ${maiorQueda.data}`,
+        color: "#dc2626",
+        data: vendasSpark,
       })
     }
 
@@ -559,6 +681,8 @@ const filteredData = useMemo(() => {
         text: `Conversão média de ${skuResumo.conversao
           .toFixed(1)
           .replace(".", ",")}% no período`,
+        color: "#16a34a",
+        data: conversaoSpark,
       })
     } else {
       insights.push({
@@ -567,6 +691,8 @@ const filteredData = useMemo(() => {
         text: `Conversão média de ${skuResumo.conversao
           .toFixed(1)
           .replace(".", ",")}% no período`,
+        color: "#dc2626",
+        data: conversaoSpark,
       })
     }
 
@@ -590,6 +716,8 @@ const filteredData = useMemo(() => {
         icon: "👑",
         title: "MLB campeão",
         text: `${topMLB[0]} gerou ${numberToMoney(topMLB[1])}`,
+        color: "#f59e0b",
+        data: vendasSpark,
       })
     }
 
@@ -606,6 +734,21 @@ const filteredData = useMemo(() => {
         text: `${variacao >= 0 ? "Alta" : "Queda"} de ${Math.abs(variacao)
           .toFixed(1)
           .replace(".", ",")}% em vendas`,
+        color: variacao >= 0 ? "#16a34a" : "#dc2626",
+        data: vendasSpark,
+      })
+    }
+
+    const visitasUltimosDias = visitasSpark.slice(-7)
+    if (visitasUltimosDias.length > 1) {
+      insights.push({
+        icon: "👁️",
+        title: "Movimento de visitas",
+        text: `${visitasUltimosDias
+          .reduce((acc, item) => acc + item.value, 0)
+          .toLocaleString("pt-BR")} visitas nos últimos dias`,
+        color: "#7c3aed",
+        data: visitasSpark,
       })
     }
 
@@ -888,7 +1031,7 @@ const filteredData = useMemo(() => {
             <div className="performance-grid">
               <RankingCard
                 title="🏆 Top SKUs por vendas"
-                subtitle="Maior receita no período selecionado"
+                subtitle="Ranking por valor de vendas"
                 data={topVendas}
                 valueKey="vendas"
                 valueFormatter={numberToMoney}
@@ -900,7 +1043,7 @@ const filteredData = useMemo(() => {
 
               <RankingCard
                 title="📈 Top SKUs por conversão"
-                subtitle="Melhor taxa média de conversão"
+                subtitle="Ranking por taxa de conversão média"
                 data={topConversao}
                 valueKey="conversao"
                 valueFormatter={(v) => `${Number(v).toFixed(1).replace(".", ",")}%`}
@@ -937,6 +1080,65 @@ const filteredData = useMemo(() => {
               />
             </div>
 
+            <section className="heatmap-card">
+              <div className="table-head">
+                <div>
+                  <h3>🔥 Heatmap de performance</h3>
+                  <p>Intensidade de vendas por SKU nos últimos dias do período</p>
+                </div>
+
+                <div className="heat-legend">
+                  <span>Baixo</span>
+                  <i className="heat-box heat-1" />
+                  <i className="heat-box heat-2" />
+                  <i className="heat-box heat-3" />
+                  <i className="heat-box heat-4" />
+                  <i className="heat-box heat-5" />
+                  <span>Alto</span>
+                </div>
+              </div>
+
+              <div className="heatmap-scroll">
+                <table className="heatmap-table">
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      {heatmapData.datas.map((data) => (
+                        <th key={data}>{data.slice(0, 5)}</th>
+                      ))}
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {heatmapData.skus.map((sku) => (
+                      <tr key={sku.sku}>
+                        <td>
+                          <strong>{sku.sku}</strong>
+                          <small>{sku.produto}</small>
+                        </td>
+
+                        {heatmapData.datas.map((data) => {
+                          const value = sku.daily?.[data] || 0
+
+                          return (
+                            <td
+                              key={`${sku.sku}-${data}`}
+                              className={`heat-cell ${heatClass(value, heatmapData.maxValue)}`}
+                            >
+                              {value > 0 ? numberToMoney(value) : "-"}
+                            </td>
+                          )
+                        })}
+
+                        <td className="heat-total">{numberToMoney(sku.vendas)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             <section className="table-card">
               <div className="table-head">
                 <div>
@@ -956,6 +1158,8 @@ const filteredData = useMemo(() => {
                       <th>Conversão</th>
                       <th>Qtd.</th>
                       <th>Ticket Médio</th>
+                      <th>Tendência</th>
+                      <th>Score</th>
                       <th>Status</th>
                       <th>Ação</th>
                     </tr>
@@ -975,6 +1179,15 @@ const filteredData = useMemo(() => {
                           <td>{`${item.conversao.toFixed(1).replace(".", ",")}%`}</td>
                           <td>{item.quantidade.toLocaleString("pt-BR")}</td>
                           <td>{numberToMoney(item.ticketMedio)}</td>
+                          <td>
+                            <span className={`trend-pill ${item.trend >= 0 ? "up" : "down"}`}>
+                              {item.trend >= 0 ? "▲" : "▼"}{" "}
+                              {Math.abs(item.trend).toFixed(1).replace(".", ",")}%
+                            </span>
+                          </td>
+                          <td>
+                            <ScoreBar score={item.score} />
+                          </td>
                           <td>
                             <span className={`status-pill ${item.statusClass}`}>
                               {item.status}
@@ -1290,12 +1503,20 @@ const filteredData = useMemo(() => {
 
                 <div className="insights-grid">
                   {skuInsights.map((item, index) => (
-                    <div key={index} className="insight-item">
-                      <span>{item.icon}</span>
-                      <div>
-                        <strong>{item.title}</strong>
-                        <p>{item.text}</p>
+                    <div key={index} className="insight-item insight-with-chart">
+                      <div className="insight-main">
+                        <span>{item.icon}</span>
+
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.text}</p>
+                        </div>
                       </div>
+
+                      <InsightSparkline
+                        data={item.data}
+                        color={item.color}
+                      />
                     </div>
                   ))}
                 </div>
@@ -1368,6 +1589,66 @@ const filteredData = useMemo(() => {
   )
 }
 
+function InsightSparkline({ data = [], color = "#2563eb" }) {
+  const chartData = data.slice(-12)
+
+  if (!chartData.length) {
+    return (
+      <div className="insight-sparkline empty">
+        Sem dados suficientes
+      </div>
+    )
+  }
+
+  return (
+    <div className="insight-sparkline">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient
+              id={`spark-${color.replace("#", "")}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="5%" stopColor={color} stopOpacity={0.24} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
+          <Tooltip
+            cursor={false}
+            contentStyle={{
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              boxShadow: "0 12px 28px rgba(15,23,42,.12)",
+              fontSize: "11px",
+            }}
+            formatter={(value) => [value, ""]}
+            labelFormatter={(label) => `Data: ${label}`}
+          />
+
+          <Area
+            type="natural"
+            dataKey="value"
+            stroke={color}
+            fill={`url(#spark-${color.replace("#", "")})`}
+            strokeWidth={2.4}
+            dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              stroke: "#fff",
+              fill: color,
+            }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function RankingCard({
   title,
   subtitle,
@@ -1377,7 +1658,7 @@ function RankingCard({
   onOpenSku,
 }) {
   return (
-    <section className="ranking-card">
+    <section className="ranking-card compact-rank-card">
       <div className="ranking-head">
         <div>
           <h3>{title}</h3>
@@ -1395,10 +1676,13 @@ function RankingCard({
         {data.map((item, index) => (
           <button
             key={`${item.sku}-${index}`}
-            className="ranking-item"
+            className={`ranking-item compact-ranking-item ${index < 3 ? "podium" : ""}`}
             onClick={() => onOpenSku(item.sku)}
+            style={{ animationDelay: `${index * 45}ms` }}
           >
-            <span className="ranking-position">#{index + 1}</span>
+            <span className={`ranking-position ${medalClass(index)}`}>
+              {index < 3 ? ["🥇", "🥈", "🥉"][index] : `#${index + 1}`}
+            </span>
 
             <div className="ranking-info">
               <strong>{item.sku}</strong>
@@ -1407,14 +1691,36 @@ function RankingCard({
 
             <div className="ranking-value">
               <strong>{valueFormatter(item[valueKey])}</strong>
-              <span className={`status-pill ${item.statusClass}`}>
-                {item.status}
+
+              <span className={`trend-mini ${item.trend >= 0 ? "up" : "down"}`}>
+                {item.trend >= 0 ? "▲" : "▼"}{" "}
+                {Math.abs(item.trend).toFixed(1).replace(".", ",")}%
               </span>
+
+              <ScoreBar score={item.score} compact />
             </div>
           </button>
         ))}
       </div>
     </section>
+  )
+}
+
+function ScoreBar({ score, compact = false }) {
+  return (
+    <div className={`score-wrap ${compact ? "compact" : ""}`}>
+      <div className="score-row">
+        <span>Score</span>
+        <strong>{score}</strong>
+      </div>
+
+      <div className={`score-track ${scoreClass(score)}`}>
+        <div
+          className="score-fill"
+          style={{ width: `${score}%` }}
+        />
+      </div>
+    </div>
   )
 }
 
