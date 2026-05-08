@@ -25,6 +25,7 @@ ARQUIVO_HISTORICO = PASTA_BASE / "historico_geral.json"
 
 # Este é o histórico formatado que o dashboard React lê.
 ARQUIVO_HISTORICO_DASHBOARD = PASTA_JSON / "historico_geral.json"
+ARQUIVO_INDEX = PASTA_JSON / "index.json"
 
 # Mapeamento
 ARQUIVO_MAPEAMENTO = PASTA_JSON / "mapeamento.xlsx"
@@ -441,6 +442,18 @@ def aplicar_formatacao_excel(ws):
     ws.row_dimensions[1].height = 42
 
 
+
+
+def salvar_index_dashboard(index_dados):
+    with open(ARQUIVO_INDEX, "w", encoding="utf-8") as f:
+        json.dump(
+            index_dados,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+
 def gerar_planilhas():
     mapa = pd.read_excel(ARQUIVO_MAPEAMENTO)
     mapa.columns = [str(c).strip().upper() for c in mapa.columns]
@@ -473,6 +486,7 @@ def gerar_planilhas():
     todas_datas = sorted(base["data_relatorio"].unique(), reverse=True)
 
     historico_dashboard = []
+    index_arquivos = []
 
     for sku, grupo in mapa.groupby("SKU"):
         linhas = []
@@ -555,6 +569,12 @@ def gerar_planilhas():
         arquivo_saida = PASTA_SAIDA / f"{nome_arquivo}.xlsx"
         arquivo_json = PASTA_JSON / f"{nome_arquivo}.json"
 
+        index_arquivos.append({
+            "sku": sku,
+            "produto": nome_produto if nome_produto else "-",
+            "arquivo": arquivo_json.name
+        })
+
         df_saida.to_json(
             arquivo_json,
             orient="records",
@@ -581,6 +601,16 @@ def gerar_planilhas():
         )
 
         print(f"Histórico geral do dashboard atualizado: {ARQUIVO_HISTORICO_DASHBOARD}")
+
+        index_dados = {
+            "atualizado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "total_skus": len(index_arquivos),
+            "arquivos": sorted(index_arquivos, key=lambda x: x["sku"])
+        }
+
+        salvar_index_dashboard(index_dados)
+
+        print(f"Index do dashboard atualizado: {ARQUIVO_INDEX}")
 
     print("Finalizado.")
 

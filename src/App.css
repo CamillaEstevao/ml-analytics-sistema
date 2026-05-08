@@ -719,6 +719,20 @@ tbody tr:hover {
   font-weight: 700;
 }
 
+.mini-action {
+  border: 0;
+  background: #2563eb;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mini-action:hover {
+  background: #1d4ed8;
+}
+
 @media (max-width: 1250px) {
   .chart-grid {
     grid-template-columns: repeat(2, minmax(260px, 1fr));

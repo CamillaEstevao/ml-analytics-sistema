@@ -25,6 +25,8 @@ import "./App.css"
 
 const HISTORICO_FILE = "/data/historico_geral.json"
 
+const INDEX_FILE = "/data/index.json"
+
 function moneyToNumber(value) {
   if (!value || value === "-") return 0
 
@@ -89,12 +91,23 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
 
+  const [skuIndex, setSkuIndex] = useState([])
+  const [skuSearch, setSkuSearch] = useState("")
+
   useEffect(() => {
   async function loadData() {
     try {
       const historico = await fetch(HISTORICO_FILE).then((res) => res.json())
 
       setData(historico)
+
+      try {
+        const index = await fetch(INDEX_FILE).then((res) => res.json())
+        setSkuIndex(index.arquivos || [])
+      } catch (indexError) {
+        console.error("Erro ao carregar index.json:", indexError)
+        setSkuIndex([])
+      }
 
       if (historico.length > 0) {
         const dates = historico
@@ -225,6 +238,31 @@ const filteredData = useMemo(() => {
 
     return { vendas, visitas, quantidade, conversao }
   }, [filteredData])
+
+  const filteredSkus = useMemo(() => {
+    const termoOriginal = skuSearch.toLowerCase().trim()
+    const termoClean = normalizeText(skuSearch)
+
+    return skuIndex.filter((item) => {
+      const sku = String(item.sku || "")
+      const produto = String(item.produto || "")
+      const arquivo = String(item.arquivo || "")
+
+      const skuClean = normalizeText(sku)
+      const produtoClean = normalizeText(produto)
+      const arquivoClean = normalizeText(arquivo)
+
+      return (
+        !termoOriginal ||
+        sku.toLowerCase().includes(termoOriginal) ||
+        produto.toLowerCase().includes(termoOriginal) ||
+        arquivo.toLowerCase().includes(termoOriginal) ||
+        skuClean.includes(termoClean) ||
+        produtoClean.includes(termoClean) ||
+        arquivoClean.includes(termoClean)
+      )
+    })
+  }, [skuIndex, skuSearch])
 
   function exportCSV() {
     if (!filteredData.length) return
@@ -409,116 +447,177 @@ const filteredData = useMemo(() => {
           </section>
         )}
 
-        <section className="table-card">
-          <div className="table-head">
-            <div>
-              <h3>Performance por SKU</h3>
-              <p>
-                {loading
-                  ? "Carregando dados..."
-                  : `${filteredData.length} registros encontrados`}
-              </p>
+        {activeMenu === "sku" && (
+          <section className="table-card">
+            <div className="table-head">
+              <div>
+                <h3>Catálogo de SKUs</h3>
+                <p>
+                  {filteredSkus.length} SKUs encontrados
+                </p>
+              </div>
+
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  placeholder="Buscar SKU, produto ou arquivo..."
+                  value={skuSearch}
+                  onChange={(e) => setSkuSearch(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="search-box">
-              <Search size={18} />
-              <input
-                placeholder="Buscar SKU, UTD-092, 092 ou MLB..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Data Referência</th>
-                  <th>SKU</th>
-                  <th>MLB</th>
-                  <th>Valor Produto</th>
-                  <th>Vendas</th>
-                  <th>% Var. Vendas</th>
-                  <th>Visitas</th>
-                  <th>% Var. Visitas</th>
-                  <th>Conversão</th>
-                  <th>Qtd.</th>
-                  <th>Participação</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {paginatedData.map((row, index) => (
-                  <tr key={`${row["Data Análise"]}-${row["SKU"]}-${row["Ref."]}-${index}`}>
-                    <td>{row["Data Análise"]}</td>
-                    <td>{row["Valores análise período anterior"]}</td>
-                    <td>
-                      <strong className="sku-pill">{row["SKU"]}</strong>
-                    </td>
-                    <td>{row["Ref."]}</td>
-                    <td>{row["Valor Produto"]}</td>
-                    <td>{row["Vendas Brutas"]}</td>
-                    <td
-                      className={getVariationClass(
-                        row["Comparado c/ o dia anterior Vendas Brutas"]
-                      )}
-                    >
-                      {row["Comparado c/ o dia anterior Vendas Brutas"]}
-                    </td>
-                    <td>{row["Visitas"]}</td>
-                    <td
-                      className={getVariationClass(
-                        row["Comparado c/ o dia anterior Visitas"]
-                      )}
-                    >
-                      {row["Comparado c/ o dia anterior Visitas"]}
-                    </td>
-                    <td>{row["Conversão %"]}</td>
-                    <td>{row["Quantidade de Vendas"]}</td>
-                    <td>{row["% de Participação"]}</td>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Produto</th>
+                    <th>Arquivo</th>
+                    <th>Ação</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
 
-          <div className="pagination">
-            <span>
-              Página {totalPages === 0 ? 0 : currentPage} de {totalPages || 1}
-            </span>
+                <tbody>
+                  {filteredSkus.map((item) => (
+                    <tr key={item.arquivo}>
+                      <td>
+                        <strong className="sku-pill">{item.sku}</strong>
+                      </td>
+                      <td>{item.produto}</td>
+                      <td>{item.arquivo}</td>
+                      <td>
+                        <button
+                          className="mini-action"
+                          onClick={() => {
+                            setActiveMenu("performance")
+                            setSearch(item.sku)
+                          }}
+                        >
+                          Ver detalhes
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value))
-                setCurrentPage(1)
-              }}
-            >
-              <option value={10}>10 por página</option>
-              <option value={20}>20 por página</option>
-              <option value={50}>50 por página</option>
-              <option value={100}>100 por página</option>
-            </select>
+        {activeMenu !== "sku" && (
+          <section className="table-card">
+            <div className="table-head">
+              <div>
+                <h3>Performance por SKU</h3>
+                <p>
+                  {loading
+                    ? "Carregando dados..."
+                    : `${filteredData.length} registros encontrados`}
+                </p>
+              </div>
 
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-            >
-              Anterior
-            </button>
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  placeholder="Buscar SKU, UTD-092, 092 ou MLB..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
 
-            <button
-              disabled={currentPage >= totalPages}
-              onClick={() =>
-                setCurrentPage((page) => Math.min(page + 1, totalPages))
-              }
-            >
-              Próxima
-            </button>
-          </div>
-        </section>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Data Referência</th>
+                    <th>SKU</th>
+                    <th>MLB</th>
+                    <th>Valor Produto</th>
+                    <th>Vendas</th>
+                    <th>% Var. Vendas</th>
+                    <th>Visitas</th>
+                    <th>% Var. Visitas</th>
+                    <th>Conversão</th>
+                    <th>Qtd.</th>
+                    <th>Participação</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paginatedData.map((row, index) => (
+                    <tr key={`${row["Data Análise"]}-${row["SKU"]}-${row["Ref."]}-${index}`}>
+                      <td>{row["Data Análise"]}</td>
+                      <td>{row["Valores análise período anterior"]}</td>
+                      <td>
+                        <strong className="sku-pill">{row["SKU"]}</strong>
+                      </td>
+                      <td>{row["Ref."]}</td>
+                      <td>{row["Valor Produto"]}</td>
+                      <td>{row["Vendas Brutas"]}</td>
+                      <td
+                        className={getVariationClass(
+                          row["Comparado c/ o dia anterior Vendas Brutas"]
+                        )}
+                      >
+                        {row["Comparado c/ o dia anterior Vendas Brutas"]}
+                      </td>
+                      <td>{row["Visitas"]}</td>
+                      <td
+                        className={getVariationClass(
+                          row["Comparado c/ o dia anterior Visitas"]
+                        )}
+                      >
+                        {row["Comparado c/ o dia anterior Visitas"]}
+                      </td>
+                      <td>{row["Conversão %"]}</td>
+                      <td>{row["Quantidade de Vendas"]}</td>
+                      <td>{row["% de Participação"]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pagination">
+              <span>
+                Página {totalPages === 0 ? 0 : currentPage} de {totalPages || 1}
+              </span>
+
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+              >
+                <option value={10}>10 por página</option>
+                <option value={20}>20 por página</option>
+                <option value={50}>50 por página</option>
+                <option value={100}>100 por página</option>
+              </select>
+
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              >
+                Anterior
+              </button>
+
+              <button
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(page + 1, totalPages))
+                }
+              >
+                Próxima
+              </button>
+            </div>
+          </section>
+        )}
+
       </main>
     </div>
   )

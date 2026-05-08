@@ -1,35 +1,181 @@
-[
-    "SKU_UTD-092.json",
-    "SKU_UTD-144-BR.json",
-    "SKU_UTD-029.json",
-    "SKU_UTD-032.json",
-    "SKU_UTD-022-CZ.json",
-    "SKU_UTD-027-BR.json",
-    "SKU_UTD-030.json",
-    "SKU_UTD-028-CZ.json",
-    "SKU_UTD-016-PT.json",
-    "SKU_UTD-001-AZ.json",
-    "SKU_UTD-026.json",
-    "SKU_UTD-025-PT.json",
-    "SKU_UTD-033.json",
-    "SKU_UTD-031.json",
-    "SKU_BRINQ-043.json",
-    "SKU_UTD-013-BR.json",
-    "SKU_UTD-013-PT.json",
-    "SKU_UTD-014-BR.json",
-    "SKU_UTD-095-VM.json",
-    "SKU_UTD-145.json",
-    "SKU_BRINQ-053.json",
-    "SKU_UTD-095-CZ.json",
-    "SKU_UTD-018.json",
-    "SKU_UTD-002.json",
-    "SKU_UTD-006-PT.json",
-    "SKU_BRINQ-019.json",
-    "SKU_UTD-095-PT.json",
-    "SKU_UTD-144-PT.json",
-    "SKU_UTD-154.json",
-    "SKU_UTD-098-PT.json",
-    "SKU_BRINQ-042.json",
-    "SKU_BRINQ-001.json",
-    "SKU_UTD-024-BR.json"
-]
+{
+  "atualizado_em": "08/05/2026 11:21",
+  "total_skus": 35,
+  "arquivos": [
+    {
+      "sku": "BRINQ-001",
+      "produto": "Bingo 48 cartelas",
+      "arquivo": "SKU_BRINQ-001-BINGO-48-CARTELAS.json"
+    },
+    {
+      "sku": "BRINQ-019",
+      "produto": "Vassoura infantil unicornio",
+      "arquivo": "SKU_BRINQ-019-VASSOURA-INFANTIL-UNICORNIO.json"
+    },
+    {
+      "sku": "BRINQ-042",
+      "produto": "Bingo 24 cartelas",
+      "arquivo": "SKU_BRINQ-042-BINGO-24-CARTELAS.json"
+    },
+    {
+      "sku": "BRINQ-043",
+      "produto": "Tombola",
+      "arquivo": "SKU_BRINQ-043-TOMBOLA.json"
+    },
+    {
+      "sku": "BRINQ-053",
+      "produto": "Kit praia 8 pecas",
+      "arquivo": "SKU_BRINQ-053-KIT-PRAIA-8-PECAS.json"
+    },
+    {
+      "sku": "UTD-001-AZ",
+      "produto": "Varal Cabide Azul",
+      "arquivo": "SKU_UTD-001-AZ-VARAL-CABIDE-AZUL.json"
+    },
+    {
+      "sku": "UTD-002",
+      "produto": "Cabide Transparente",
+      "arquivo": "SKU_UTD-002-CABIDE-TRANSPARENTE.json"
+    },
+    {
+      "sku": "UTD-006-PT",
+      "produto": "Cabide 5 ganchos",
+      "arquivo": "SKU_UTD-006-PT-CABIDE-5-GANCHOS.json"
+    },
+    {
+      "sku": "UTD-013-BR",
+      "produto": "Porta frios branco",
+      "arquivo": "SKU_UTD-013-BR-PORTA-FRIOS-BRANCO.json"
+    },
+    {
+      "sku": "UTD-013-PT",
+      "produto": "Porta frios preto",
+      "arquivo": "SKU_UTD-013-PT-PORTA-FRIOS-PRETO.json"
+    },
+    {
+      "sku": "UTD-014-BR",
+      "produto": "Apoio cocoras",
+      "arquivo": "SKU_UTD-014-BR-APOIO-COCORAS.json"
+    },
+    {
+      "sku": "UTD-016-PT",
+      "produto": "Escorredor Duplo Desmontavel",
+      "arquivo": "SKU_UTD-016-PT-ESCORREDOR-DUPLO-DESMONTAVEL.json"
+    },
+    {
+      "sku": "UTD-018",
+      "produto": "Porta Lenco Acrilico",
+      "arquivo": "SKU_UTD-018-PORTA-LENCO-ACRILICO.json"
+    },
+    {
+      "sku": "UTD-022-CZ",
+      "produto": "Lixeira Preto com Cinza",
+      "arquivo": "SKU_UTD-022-CZ-LIXEIRA-PRETO-COM-CINZA.json"
+    },
+    {
+      "sku": "UTD-024-BR",
+      "produto": "Suporte pratos organizador",
+      "arquivo": "SKU_UTD-024-BR-SUPORTE-PRATOS-ORGANIZADOR.json"
+    },
+    {
+      "sku": "UTD-025-BR",
+      "produto": "Carrinho prateleira branco",
+      "arquivo": "SKU_UTD-025-BR-CARRINHO-PRATELEIRA-BRANCO.json"
+    },
+    {
+      "sku": "UTD-025-PT",
+      "produto": "Carrinho Prateleira Preto",
+      "arquivo": "SKU_UTD-025-PT-CARRINHO-PRATELEIRA-PRETO.json"
+    },
+    {
+      "sku": "UTD-026",
+      "produto": "Porta Lenço Fume",
+      "arquivo": "SKU_UTD-026-PORTA-LENCO-FUME.json"
+    },
+    {
+      "sku": "UTD-027-BR",
+      "produto": "Porta Talheres Extensivel Branco",
+      "arquivo": "SKU_UTD-027-BR-PORTA-TALHERES-EXTENSIVEL-BRANCO.json"
+    },
+    {
+      "sku": "UTD-028-CZ",
+      "produto": "Organizador Tampa",
+      "arquivo": "SKU_UTD-028-CZ-ORGANIZADOR-TAMPA.json"
+    },
+    {
+      "sku": "UTD-029",
+      "produto": "Kit 6 Potes 1L vittaza",
+      "arquivo": "SKU_UTD-029-KIT-6-POTES-1L-VITTAZA.json"
+    },
+    {
+      "sku": "UTD-030",
+      "produto": "Boleira Vittaza- com pé-1750",
+      "arquivo": "SKU_UTD-030-BOLEIRA-VITTAZA-COM-PE-1750.json"
+    },
+    {
+      "sku": "UTD-031",
+      "produto": "Centro mesa folha",
+      "arquivo": "SKU_UTD-031-CENTRO-MESA-FOLHA.json"
+    },
+    {
+      "sku": "UTD-032",
+      "produto": "Boleira Petala Jasmin -1730",
+      "arquivo": "SKU_UTD-032-BOLEIRA-PETALA-JASMIN-1730.json"
+    },
+    {
+      "sku": "UTD-033",
+      "produto": "Boleira Vittaza sem pé -1740",
+      "arquivo": "SKU_UTD-033-BOLEIRA-VITTAZA-SEM-PE-1740.json"
+    },
+    {
+      "sku": "UTD-092",
+      "produto": "Escorredor duplo Inox",
+      "arquivo": "SKU_UTD-092-ESCORREDOR-DUPLO-INOX.json"
+    },
+    {
+      "sku": "UTD-095-CZ",
+      "produto": "Seca saladas cinza",
+      "arquivo": "SKU_UTD-095-CZ-SECA-SALADAS-CINZA.json"
+    },
+    {
+      "sku": "UTD-095-PT",
+      "produto": "Seca salada preto",
+      "arquivo": "SKU_UTD-095-PT-SECA-SALADA-PRETO.json"
+    },
+    {
+      "sku": "UTD-095-VM",
+      "produto": "Seca salada vermelho",
+      "arquivo": "SKU_UTD-095-VM-SECA-SALADA-VERMELHO.json"
+    },
+    {
+      "sku": "UTD-098-BR",
+      "produto": "Porta rolo branco",
+      "arquivo": "SKU_UTD-098-BR-PORTA-ROLO-BRANCO.json"
+    },
+    {
+      "sku": "UTD-098-PT",
+      "produto": "Porta rolo preto",
+      "arquivo": "SKU_UTD-098-PT-PORTA-ROLO-PRETO.json"
+    },
+    {
+      "sku": "UTD-144-BR",
+      "produto": "Escorredor extensivel branco",
+      "arquivo": "SKU_UTD-144-BR-ESCORREDOR-EXTENSIVEL-BRANCO.json"
+    },
+    {
+      "sku": "UTD-144-PT",
+      "produto": "Escorredor extensivel preto",
+      "arquivo": "SKU_UTD-144-PT-ESCORREDOR-EXTENSIVEL-PRETO.json"
+    },
+    {
+      "sku": "UTD-145",
+      "produto": "Escorredor duplo com bica arthi",
+      "arquivo": "SKU_UTD-145-ESCORREDOR-DUPLO-COM-BICA-ARTHI.json"
+    },
+    {
+      "sku": "UTD-154",
+      "produto": "Ki 6 potes container",
+      "arquivo": "SKU_UTD-154-KI-6-POTES-CONTAINER.json"
+    }
+  ]
+}
