@@ -94,6 +94,9 @@ function App() {
   const [skuIndex, setSkuIndex] = useState([])
   const [skuSearch, setSkuSearch] = useState("")
 
+  const [selectedSku, setSelectedSku] = useState(null)
+  const [skuModalOpen, setSkuModalOpen] = useState(false)
+
   useEffect(() => {
   async function loadData() {
     try {
@@ -263,6 +266,217 @@ const filteredData = useMemo(() => {
       )
     })
   }, [skuIndex, skuSearch])
+
+  const skuDetailData = useMemo(() => {
+    if (!selectedSku) return []
+
+    return data
+      .filter((row) => row["SKU"] === selectedSku)
+      .sort((a, b) => {
+        const dateA = brDateToISO(a["Data Análise"])
+        const dateB = brDateToISO(b["Data Análise"])
+
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA)
+        }
+
+        return moneyToNumber(b["Vendas Brutas"]) - moneyToNumber(a["Vendas Brutas"])
+      })
+  }, [data, selectedSku])
+
+  const selectedSkuInfo = useMemo(() => {
+    if (!selectedSku) return null
+
+    return skuIndex.find((item) => item.sku === selectedSku) || {
+      sku: selectedSku,
+      produto: skuDetailData[0]?.["Produto"] || "-",
+      arquivo: "-",
+    }
+  }, [skuIndex, selectedSku, skuDetailData])
+
+  const skuResumo = useMemo(() => {
+    if (!skuDetailData.length) {
+      return {
+        vendas: 0,
+        visitas: 0,
+        quantidade: 0,
+        conversao: 0,
+      }
+    }
+
+    const vendas = skuDetailData.reduce(
+      (acc, row) => acc + moneyToNumber(row["Vendas Brutas"]),
+      0
+    )
+
+    const visitas = skuDetailData.reduce(
+      (acc, row) => acc + (Number(row["Visitas"]) || 0),
+      0
+    )
+
+    const quantidade = skuDetailData.reduce(
+      (acc, row) => acc + (Number(row["Quantidade de Vendas"]) || 0),
+      0
+    )
+
+    const conversao = visitas > 0 ? (quantidade / visitas) * 100 : 0
+
+    return {
+      vendas,
+      visitas,
+      quantidade,
+      conversao,
+    }
+  }, [skuDetailData])
+
+  const skuChartData = useMemo(() => {
+    const grouped = {}
+
+    skuDetailData.forEach((row) => {
+      const date = row["Data Análise"]
+
+      if (!grouped[date]) {
+        grouped[date] = {
+          date,
+          vendas: 0,
+          visitas: 0,
+          conversao: 0,
+          qtdConversao: 0,
+        }
+      }
+
+      grouped[date].vendas += moneyToNumber(row["Vendas Brutas"])
+      grouped[date].visitas += Number(row["Visitas"]) || 0
+
+      const conv = percentToNumber(row["Conversão %"])
+      if (conv > 0) {
+        grouped[date].conversao += conv
+        grouped[date].qtdConversao += 1
+      }
+    })
+
+    return Object.values(grouped)
+      .sort((a, b) => brDateToISO(a.date).localeCompare(brDateToISO(b.date)))
+      .map((item) => ({
+        ...item,
+        conversao:
+          item.qtdConversao > 0
+            ? Number((item.conversao / item.qtdConversao).toFixed(1))
+            : 0,
+      }))
+  }, [skuDetailData])
+
+  const skuInsights = useMemo(() => {
+    if (!skuDetailData.length) return []
+
+    const insights = []
+
+    const melhorDia = [...skuChartData].sort(
+      (a, b) => b.vendas - a.vendas
+    )[0]
+
+    if (melhorDia) {
+      insights.push({
+        icon: "🔥",
+        title: "Melhor dia de vendas",
+        text: `${melhorDia.date} com ${numberToMoney(melhorDia.vendas)}`,
+      })
+    }
+
+    const quedas = skuDetailData
+      .map((row) => {
+        const texto = String(
+          row["Comparado c/ o dia anterior Vendas Brutas"] || ""
+        )
+
+        if (!texto.includes("▼")) return null
+
+        const valor =
+          Number(
+            texto
+              .replace("▼", "")
+              .replace("%", "")
+              .replace(",", ".")
+              .trim()
+          ) || 0
+
+        return {
+          valor,
+          texto,
+          data: row["Data Análise"],
+        }
+      })
+      .filter(Boolean)
+
+    if (quedas.length) {
+      const maiorQueda = quedas.sort((a, b) => b.valor - a.valor)[0]
+
+      insights.push({
+        icon: "⚠️",
+        title: "Maior queda",
+        text: `${maiorQueda.texto} em ${maiorQueda.data}`,
+      })
+    }
+
+    if (skuResumo.conversao >= 5) {
+      insights.push({
+        icon: "📈",
+        title: "Conversão saudável",
+        text: `Conversão média de ${skuResumo.conversao
+          .toFixed(1)
+          .replace(".", ",")}% no período`,
+      })
+    } else {
+      insights.push({
+        icon: "📉",
+        title: "Conversão baixa",
+        text: `Conversão média de ${skuResumo.conversao
+          .toFixed(1)
+          .replace(".", ",")}% no período`,
+      })
+    }
+
+    const mlbs = {}
+
+    skuDetailData.forEach((row) => {
+      const mlb = row["Ref."]
+      const vendas = moneyToNumber(row["Vendas Brutas"])
+
+      if (!mlbs[mlb]) {
+        mlbs[mlb] = 0
+      }
+
+      mlbs[mlb] += vendas
+    })
+
+    const topMLB = Object.entries(mlbs).sort((a, b) => b[1] - a[1])[0]
+
+    if (topMLB) {
+      insights.push({
+        icon: "👑",
+        title: "MLB campeão",
+        text: `${topMLB[0]} gerou ${numberToMoney(topMLB[1])}`,
+      })
+    }
+
+    const ultimoDia = skuChartData[skuChartData.length - 1]
+    const penultimoDia = skuChartData[skuChartData.length - 2]
+
+    if (ultimoDia && penultimoDia && penultimoDia.vendas > 0) {
+      const variacao =
+        ((ultimoDia.vendas - penultimoDia.vendas) / penultimoDia.vendas) * 100
+
+      insights.push({
+        icon: variacao >= 0 ? "🚀" : "🔻",
+        title: "Último dia vs dia anterior",
+        text: `${variacao >= 0 ? "Alta" : "Queda"} de ${Math.abs(variacao)
+          .toFixed(1)
+          .replace(".", ",")}% em vendas`,
+      })
+    }
+
+    return insights
+  }, [skuDetailData, skuChartData, skuResumo])
 
   function exportCSV() {
     if (!filteredData.length) return
@@ -490,8 +704,8 @@ const filteredData = useMemo(() => {
                         <button
                           className="mini-action"
                           onClick={() => {
-                            setActiveMenu("performance")
-                            setSearch(item.sku)
+                            setSelectedSku(item.sku)
+                            setSkuModalOpen(true)
                           }}
                         >
                           Ver detalhes
@@ -616,6 +830,171 @@ const filteredData = useMemo(() => {
               </button>
             </div>
           </section>
+        )}
+
+
+        {skuModalOpen && (
+          <div className="sku-modal-overlay">
+            <div className="sku-modal">
+              <div className="sku-modal-header">
+                <div>
+                  <span className="eyebrow">Detalhe individual do SKU</span>
+                  <h2>{selectedSkuInfo?.sku}</h2>
+                  <p>{selectedSkuInfo?.produto}</p>
+                </div>
+
+                <button
+                  className="close-modal"
+                  onClick={() => setSkuModalOpen(false)}
+                >
+                  Fechar
+                </button>
+              </div>
+
+              <section className="metric-grid modal-metrics">
+                <MetricCard
+                  icon={<DollarSign size={22} />}
+                  label="Vendas"
+                  value={numberToMoney(skuResumo.vendas)}
+                  description="Receita do SKU"
+                  tone="blue"
+                />
+
+                <MetricCard
+                  icon={<Eye size={22} />}
+                  label="Visitas"
+                  value={skuResumo.visitas.toLocaleString("pt-BR")}
+                  description="Total de acessos"
+                  tone="violet"
+                />
+
+                <MetricCard
+                  icon={<Percent size={22} />}
+                  label="Conversão"
+                  value={`${skuResumo.conversao.toFixed(1).replace(".", ",")}%`}
+                  description="Conversão média"
+                  tone="green"
+                />
+
+                <MetricCard
+                  icon={<ShoppingCart size={22} />}
+                  label="Qtd. Vendas"
+                  value={skuResumo.quantidade.toLocaleString("pt-BR")}
+                  description="Pedidos convertidos"
+                  tone="orange"
+                />
+              </section>
+
+              <section className="chart-grid modal-chart-grid">
+                <PremiumChart
+                  title="Vendas"
+                  subtitle="Evolução diária do SKU"
+                  data={skuChartData}
+                  dataKey="vendas"
+                  color="#2563eb"
+                  formatter={numberToMoney}
+                />
+
+                <PremiumChart
+                  title="Visitas"
+                  subtitle="Volume diário do SKU"
+                  data={skuChartData}
+                  dataKey="visitas"
+                  color="#7c3aed"
+                  formatter={(v) => Number(v).toLocaleString("pt-BR")}
+                />
+
+                <PremiumChart
+                  title="Conversão"
+                  subtitle="Conversão diária do SKU"
+                  data={skuChartData}
+                  dataKey="conversao"
+                  color="#16a34a"
+                  formatter={(v) => `${String(v).replace(".", ",")}%`}
+                />
+              </section>
+
+              <section className="insights-card">
+                <div className="table-head">
+                  <div>
+                    <h3>Insights automáticos</h3>
+                    <p>Análise inteligente do SKU selecionado</p>
+                  </div>
+                </div>
+
+                <div className="insights-grid">
+                  {skuInsights.map((item, index) => (
+                    <div key={index} className="insight-item">
+                      <span>{item.icon}</span>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="table-card sku-detail-table">
+                <div className="table-head">
+                  <div>
+                    <h3>Histórico do SKU</h3>
+                    <p>{skuDetailData.length} registros encontrados</p>
+                  </div>
+                </div>
+
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Data Referência</th>
+                        <th>MLB</th>
+                        <th>Valor Produto</th>
+                        <th>Vendas</th>
+                        <th>% Var. Vendas</th>
+                        <th>Visitas</th>
+                        <th>% Var. Visitas</th>
+                        <th>Conversão</th>
+                        <th>Qtd.</th>
+                        <th>Participação</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {skuDetailData.map((row, index) => (
+                        <tr key={`${row["Data Análise"]}-${row["Ref."]}-${index}`}>
+                          <td>{row["Data Análise"]}</td>
+                          <td>{row["Valores análise período anterior"]}</td>
+                          <td>{row["Ref."]}</td>
+                          <td>{row["Valor Produto"]}</td>
+                          <td>{row["Vendas Brutas"]}</td>
+                          <td
+                            className={getVariationClass(
+                              row["Comparado c/ o dia anterior Vendas Brutas"]
+                            )}
+                          >
+                            {row["Comparado c/ o dia anterior Vendas Brutas"]}
+                          </td>
+                          <td>{row["Visitas"]}</td>
+                          <td
+                            className={getVariationClass(
+                              row["Comparado c/ o dia anterior Visitas"]
+                            )}
+                          >
+                            {row["Comparado c/ o dia anterior Visitas"]}
+                          </td>
+                          <td>{row["Conversão %"]}</td>
+                          <td>{row["Quantidade de Vendas"]}</td>
+                          <td>{row["% de Participação"]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
         )}
 
       </main>

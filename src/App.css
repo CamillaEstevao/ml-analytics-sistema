@@ -793,3 +793,199 @@ tbody tr:hover {
     font-size: 32px;
   }
 }
+
+
+/* =========================================================
+   DETALHE INDIVIDUAL DO SKU - MODAL
+   Regras isoladas para não quebrar o layout principal
+========================================================= */
+
+.sku-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+}
+
+.sku-modal {
+  width: min(1480px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f3f6fb;
+  border-radius: 26px;
+  padding: 26px;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Scroll apenas do modal */
+.sku-modal::-webkit-scrollbar {
+  width: 9px;
+}
+
+.sku-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sku-modal::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+/* Header do modal */
+.sku-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.sku-modal-header h2 {
+  margin: 6px 0 6px;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -1.2px;
+  color: #0f172a;
+}
+
+.sku-modal-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.close-modal {
+  border: 0;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
+  transition: all 0.2s ease;
+}
+
+.close-modal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 38px rgba(37, 99, 235, 0.34);
+}
+
+/* Mantém os cards do modal sem interferir nos cards da página */
+.sku-modal .modal-metrics {
+  margin-bottom: 22px;
+}
+
+.sku-modal .metric-grid.modal-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+/* Mantém os gráficos do modal isolados */
+.sku-modal .modal-chart-grid {
+  margin-bottom: 22px;
+}
+
+.sku-modal .chart-grid.modal-chart-grid {
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+}
+
+/* Tabela do detalhe */
+.sku-modal .sku-detail-table {
+  margin-top: 0;
+  border-radius: 24px;
+}
+
+.sku-modal .sku-detail-table table {
+  min-width: 1150px;
+}
+
+.sku-modal .sku-detail-table .table-head {
+  padding: 18px 20px;
+}
+
+.insights-card {
+  background: #ffffff;
+  border: 1px solid #dfe8f5;
+  border-radius: 26px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.065);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  padding: 0 22px 22px;
+}
+
+.insight-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.insight-item span {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.insight-item p {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* Responsivo do modal */
+@media (max-width: 1250px) {
+  .sku-modal .chart-grid.modal-chart-grid {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .sku-modal-overlay {
+    padding: 10px;
+    align-items: flex-start;
+  }
+
+  .sku-modal {
+    max-height: 96vh;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .sku-modal-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sku-modal-header h2 {
+    font-size: 27px;
+  }
+
+  .close-modal {
+    width: 100%;
+  }
+
+  .sku-modal .metric-grid.modal-metrics,
+  .sku-modal .chart-grid.modal-chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
