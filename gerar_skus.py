@@ -6,19 +6,39 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-PASTA_BASE = Path(r"C:\ML_Analytics")
-PASTA_RELATORIOS = PASTA_BASE / "relatorios_ml"
+PASTA_BASE = Path(__file__).resolve().parent
+PASTA_PUBLIC_DATA = PASTA_BASE / "public" / "data"
+
+# Pasta onde você coloca os relatórios baixados do Mercado Livre.
+# Primeiro tenta public/data/relatorios_ml. Se não existir, usa relatorios_ml na raiz.
+PASTA_RELATORIOS = PASTA_PUBLIC_DATA / "relatorios_ml"
+if not PASTA_RELATORIOS.exists():
+    PASTA_RELATORIOS = PASTA_BASE / "relatorios_ml"
+
+# Saídas
 PASTA_SAIDA = PASTA_BASE / "saida_skus"
-PASTA_JSON = PASTA_BASE / "saida_json"
+PASTA_JSON = PASTA_PUBLIC_DATA
+
+# Históricos
+# Este é o histórico bruto, usado como banco interno do Python.
 ARQUIVO_HISTORICO = PASTA_BASE / "historico_geral.json"
-ARQUIVO_MAPEAMENTO = PASTA_BASE / "mapeamento.xlsx"
+
+# Este é o histórico formatado que o dashboard React lê.
+ARQUIVO_HISTORICO_DASHBOARD = PASTA_JSON / "historico_geral.json"
+
+# Mapeamento
+ARQUIVO_MAPEAMENTO = PASTA_JSON / "mapeamento.xlsx"
+if not ARQUIVO_MAPEAMENTO.exists():
+    ARQUIVO_MAPEAMENTO = PASTA_BASE / "mapeamento.xlsx"
 
 PASTA_SAIDA.mkdir(exist_ok=True)
-PASTA_JSON.mkdir(exist_ok=True)
+PASTA_JSON.mkdir(parents=True, exist_ok=True)
 
 COLUNAS_FINAIS = [
     "Data Análise",
     "Valores análise período anterior",
+    "SKU",
+    "Produto",
     "Ref.",
     "Valor Produto",
     "Vendas Brutas",
@@ -47,6 +67,46 @@ def normalizar_texto(txt):
     txt = txt.replace("\n", " ")
     txt = " ".join(txt.split())
     return txt
+
+
+def limpar_nome_arquivo(texto):
+    texto = str(texto or "").strip().upper()
+
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+
+    texto = re.sub(r"[^A-Z0-9]+", "-", texto)
+    texto = re.sub(r"-+", "-", texto)
+
+    return texto.strip("-")
+
+
+def nome_produto_do_grupo(grupo, col_produto):
+    if not col_produto or col_produto not in grupo.columns:
+        return ""
+
+    for valor in grupo[col_produto].tolist():
+        if pd.isna(valor):
+            continue
+
+        nome = str(valor).strip()
+
+        if nome and nome.lower() != "nan":
+            return nome
+
+    return ""
+
+
+def montar_nome_arquivo_sku(sku, nome_produto):
+    sku_limpo = limpar_nome_arquivo(sku)
+    produto_limpo = limpar_nome_arquivo(nome_produto)
+
+    nome = f"SKU_{sku_limpo}"
+
+    if produto_limpo:
+        nome += f"-{produto_limpo}"
+
+    return nome
 
 
 def achar_coluna(df, possibilidades):
@@ -361,16 +421,18 @@ def aplicar_formatacao_excel(ws):
         "A": 15,
         "B": 28,
         "C": 14,
-        "D": 15,
-        "E": 16,
-        "F": 34,
-        "G": 12,
-        "H": 30,
-        "I": 14,
-        "J": 20,
-        "K": 18,
-        "L": 22,
-        "M": 22
+        "D": 30,
+        "E": 14,
+        "F": 15,
+        "G": 16,
+        "H": 34,
+        "I": 12,
+        "J": 30,
+        "K": 14,
+        "L": 20,
+        "M": 18,
+        "N": 22,
+        "O": 22
     }
 
     for col, width in larguras.items():
@@ -383,6 +445,24 @@ def gerar_planilhas():
     mapa = pd.read_excel(ARQUIVO_MAPEAMENTO)
     mapa.columns = [str(c).strip().upper() for c in mapa.columns]
 
+    col_produto = achar_coluna(
+        mapa,
+        [
+            "Produto",
+            "Nome Produto",
+            "Nome do Produto",
+            "Nome",
+            "Descrição",
+            "Descricao",
+            "Título",
+            "Titulo"
+        ]
+    )
+
+    if not col_produto:
+        print("Aviso: nenhuma coluna de nome do produto encontrada no mapeamento.xlsx.")
+        print("Use uma coluna chamada PRODUTO, NOME PRODUTO, NOME, DESCRIÇÃO ou TÍTULO.")
+
     base_nova = carregar_relatorios()
     base = atualizar_historico(base_nova)
 
@@ -392,9 +472,14 @@ def gerar_planilhas():
 
     todas_datas = sorted(base["data_relatorio"].unique(), reverse=True)
 
+    historico_dashboard = []
+
     for sku, grupo in mapa.groupby("SKU"):
         linhas = []
         itens_sku = []
+
+        nome_produto = nome_produto_do_grupo(grupo, col_produto)
+        nome_arquivo = montar_nome_arquivo_sku(sku, nome_produto)
 
         for _, item in grupo.iterrows():
             mlb = str(item["MLB"]).strip()
@@ -429,6 +514,8 @@ def gerar_planilhas():
                     linhas.append([
                         data_analise.strftime("%d/%m/%Y"),
                         data_rel.strftime("%d/%m/%Y"),
+                        sku,
+                        nome_produto if nome_produto else "-",
                         mlb,
                         valor_produto_txt,
                         "-",
@@ -446,6 +533,8 @@ def gerar_planilhas():
                 linhas.append([
                     data_analise.strftime("%d/%m/%Y"),
                     data_rel.strftime("%d/%m/%Y"),
+                    sku,
+                    nome_produto if nome_produto else "-",
                     mlb,
                     valor_produto_txt,
                     br_moeda(atual["vendas"]),
@@ -461,8 +550,10 @@ def gerar_planilhas():
 
         df_saida = pd.DataFrame(linhas, columns=COLUNAS_FINAIS)
 
-        arquivo_saida = PASTA_SAIDA / f"SKU_{sku}.xlsx"
-        arquivo_json = PASTA_JSON / f"SKU_{sku}.json"
+        historico_dashboard.append(df_saida)
+
+        arquivo_saida = PASTA_SAIDA / f"{nome_arquivo}.xlsx"
+        arquivo_json = PASTA_JSON / f"{nome_arquivo}.json"
 
         df_saida.to_json(
             arquivo_json,
@@ -478,6 +569,18 @@ def gerar_planilhas():
             aplicar_formatacao_excel(ws)
 
         print(f"Gerado: {arquivo_saida.name}")
+
+    if historico_dashboard:
+        df_historico_dashboard = pd.concat(historico_dashboard, ignore_index=True)
+
+        df_historico_dashboard.to_json(
+            ARQUIVO_HISTORICO_DASHBOARD,
+            orient="records",
+            force_ascii=False,
+            indent=2
+        )
+
+        print(f"Histórico geral do dashboard atualizado: {ARQUIVO_HISTORICO_DASHBOARD}")
 
     print("Finalizado.")
 

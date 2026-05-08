@@ -312,18 +312,29 @@ const filteredData = useMemo(() => {
 
           <div className="header-actions">
             <div className="date-filter">
-              <CalendarDays size={17} />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <span>até</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <CalendarDays size={17} className="date-main-icon" />
+
+              <label className="date-field">
+                <span>{formatarDataBR(startDate)}</span>
+                <CalendarDays size={14} className="date-field-icon" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </label>
+
+              <span className="date-separator">até</span>
+
+              <label className="date-field">
+                <span>{formatarDataBR(endDate)}</span>
+                <CalendarDays size={14} className="date-field-icon" />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </label>
             </div>
 
             <button className="export-btn" onClick={exportCSV}>
@@ -424,6 +435,7 @@ const filteredData = useMemo(() => {
               <thead>
                 <tr>
                   <th>Data</th>
+                  <th>Data Referência</th>
                   <th>SKU</th>
                   <th>MLB</th>
                   <th>Valor Produto</th>
@@ -441,6 +453,7 @@ const filteredData = useMemo(() => {
                 {paginatedData.map((row, index) => (
                   <tr key={`${row["Data Análise"]}-${row["SKU"]}-${row["Ref."]}-${index}`}>
                     <td>{row["Data Análise"]}</td>
+                    <td>{row["Valores análise período anterior"]}</td>
                     <td>
                       <strong className="sku-pill">{row["SKU"]}</strong>
                     </td>
@@ -608,6 +621,13 @@ function PremiumChart({ title, subtitle, data, dataKey, color, formatter }) {
       </div>
     </div>
   )
+}
+
+function formatarDataBR(data) {
+  if (!data) return "";
+
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
 }
 
 export default App
