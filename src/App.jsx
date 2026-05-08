@@ -267,6 +267,140 @@ const filteredData = useMemo(() => {
     })
   }, [skuIndex, skuSearch])
 
+  const performanceBySku = useMemo(() => {
+    const grouped = {}
+
+    filteredData.forEach((row) => {
+      const sku = row["SKU"] || "-"
+      const produto = row["Produto"] || "-"
+      const vendas = moneyToNumber(row["Vendas Brutas"])
+      const visitas = Number(row["Visitas"]) || 0
+      const quantidade = Number(row["Quantidade de Vendas"]) || 0
+      const conversao = percentToNumber(row["Conversão %"])
+
+      if (!grouped[sku]) {
+        grouped[sku] = {
+          sku,
+          produto,
+          vendas: 0,
+          visitas: 0,
+          quantidade: 0,
+          conversaoTotal: 0,
+          conversaoCount: 0,
+          diasSemVenda: 0,
+          quedasFortes: 0,
+          altasFortes: 0,
+          registros: 0,
+        }
+      }
+
+      grouped[sku].vendas += vendas
+      grouped[sku].visitas += visitas
+      grouped[sku].quantidade += quantidade
+      grouped[sku].registros += 1
+
+      if (conversao > 0) {
+        grouped[sku].conversaoTotal += conversao
+        grouped[sku].conversaoCount += 1
+      }
+
+      if (vendas <= 0) {
+        grouped[sku].diasSemVenda += 1
+      }
+
+      const varVendas = String(
+        row["Comparado c/ o dia anterior Vendas Brutas"] || ""
+      )
+
+      if (varVendas.includes("▼")) {
+        const valor =
+          Number(
+            varVendas
+              .replace("▼", "")
+              .replace("%", "")
+              .replace(",", ".")
+              .trim()
+          ) || 0
+
+        if (valor >= 30) {
+          grouped[sku].quedasFortes += 1
+        }
+      }
+
+      if (varVendas.includes("▲")) {
+        const valor =
+          Number(
+            varVendas
+              .replace("▲", "")
+              .replace("%", "")
+              .replace(",", ".")
+              .trim()
+          ) || 0
+
+        if (valor >= 40) {
+          grouped[sku].altasFortes += 1
+        }
+      }
+    })
+
+    return Object.values(grouped).map((item) => {
+      const conversao =
+        item.conversaoCount > 0
+          ? item.conversaoTotal / item.conversaoCount
+          : 0
+
+      let status = "Saudável"
+      let statusClass = "healthy"
+
+      if (item.diasSemVenda >= 5 || item.quedasFortes >= 3 || conversao < 2) {
+        status = "Crítico"
+        statusClass = "critical"
+      } else if (item.diasSemVenda >= 2 || item.quedasFortes >= 1 || conversao < 5) {
+        status = "Atenção"
+        statusClass = "warning"
+      }
+
+      return {
+        ...item,
+        conversao,
+        ticketMedio: item.quantidade > 0 ? item.vendas / item.quantidade : 0,
+        status,
+        statusClass,
+      }
+    })
+  }, [filteredData])
+
+  const topVendas = useMemo(() => {
+    return [...performanceBySku]
+      .sort((a, b) => b.vendas - a.vendas)
+      .slice(0, 10)
+  }, [performanceBySku])
+
+  const topConversao = useMemo(() => {
+    return [...performanceBySku]
+      .filter((item) => item.visitas > 0)
+      .sort((a, b) => b.conversao - a.conversao)
+      .slice(0, 10)
+  }, [performanceBySku])
+
+  const skusCriticos = useMemo(() => {
+    return [...performanceBySku]
+      .filter((item) => item.statusClass === "critical" || item.statusClass === "warning")
+      .sort((a, b) => {
+        if (a.statusClass === "critical" && b.statusClass !== "critical") return -1
+        if (a.statusClass !== "critical" && b.statusClass === "critical") return 1
+        return b.quedasFortes - a.quedasFortes
+      })
+      .slice(0, 10)
+  }, [performanceBySku])
+
+  const topCrescimento = useMemo(() => {
+    return [...performanceBySku]
+      .filter((item) => item.altasFortes > 0)
+      .sort((a, b) => b.altasFortes - a.altasFortes)
+      .slice(0, 10)
+  }, [performanceBySku])
+
   const skuDetailData = useMemo(() => {
     if (!selectedSku) return []
 
@@ -718,7 +852,7 @@ const filteredData = useMemo(() => {
           />
         </section>
 
-        {activeMenu !== "sku" && (
+        {activeMenu === "visao" && (
           <section className="chart-grid">
             <PremiumChart
               title="Vendas Brutas"
@@ -746,6 +880,123 @@ const filteredData = useMemo(() => {
               color="#16a34a"
               formatter={(v) => `${String(v).replace(".", ",")}%`}
             />
+          </section>
+        )}
+
+        {activeMenu === "performance" && (
+          <section className="performance-dashboard">
+            <div className="performance-grid">
+              <RankingCard
+                title="🏆 Top SKUs por vendas"
+                subtitle="Maior receita no período selecionado"
+                data={topVendas}
+                valueKey="vendas"
+                valueFormatter={numberToMoney}
+                onOpenSku={(sku) => {
+                  setSelectedSku(sku)
+                  setSkuModalOpen(true)
+                }}
+              />
+
+              <RankingCard
+                title="📈 Top SKUs por conversão"
+                subtitle="Melhor taxa média de conversão"
+                data={topConversao}
+                valueKey="conversao"
+                valueFormatter={(v) => `${Number(v).toFixed(1).replace(".", ",")}%`}
+                onOpenSku={(sku) => {
+                  setSelectedSku(sku)
+                  setSkuModalOpen(true)
+                }}
+              />
+            </div>
+
+            <div className="performance-grid">
+              <RankingCard
+                title="⚠️ SKUs em alerta"
+                subtitle="Produtos que precisam de atenção"
+                data={skusCriticos}
+                valueKey="quedasFortes"
+                valueFormatter={(v) => `${v} alertas`}
+                onOpenSku={(sku) => {
+                  setSelectedSku(sku)
+                  setSkuModalOpen(true)
+                }}
+              />
+
+              <RankingCard
+                title="🚀 Maiores crescimentos"
+                subtitle="SKUs com altas fortes detectadas"
+                data={topCrescimento}
+                valueKey="altasFortes"
+                valueFormatter={(v) => `${v} altas`}
+                onOpenSku={(sku) => {
+                  setSelectedSku(sku)
+                  setSkuModalOpen(true)
+                }}
+              />
+            </div>
+
+            <section className="table-card">
+              <div className="table-head">
+                <div>
+                  <h3>Resumo de performance por SKU</h3>
+                  <p>{performanceBySku.length} SKUs analisados</p>
+                </div>
+              </div>
+
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      <th>Produto</th>
+                      <th>Vendas</th>
+                      <th>Visitas</th>
+                      <th>Conversão</th>
+                      <th>Qtd.</th>
+                      <th>Ticket Médio</th>
+                      <th>Status</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {performanceBySku
+                      .sort((a, b) => b.vendas - a.vendas)
+                      .map((item) => (
+                        <tr key={item.sku}>
+                          <td>
+                            <strong className="sku-pill">{item.sku}</strong>
+                          </td>
+                          <td>{item.produto}</td>
+                          <td>{numberToMoney(item.vendas)}</td>
+                          <td>{item.visitas.toLocaleString("pt-BR")}</td>
+                          <td>{`${item.conversao.toFixed(1).replace(".", ",")}%`}</td>
+                          <td>{item.quantidade.toLocaleString("pt-BR")}</td>
+                          <td>{numberToMoney(item.ticketMedio)}</td>
+                          <td>
+                            <span className={`status-pill ${item.statusClass}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="mini-action"
+                              onClick={() => {
+                                setSelectedSku(item.sku)
+                                setSkuModalOpen(true)
+                              }}
+                            >
+                              Ver detalhes
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </section>
         )}
 
@@ -807,7 +1058,7 @@ const filteredData = useMemo(() => {
           </section>
         )}
 
-        {activeMenu !== "sku" && (
+        {activeMenu === "visao" && (
           <section className="table-card">
             <div className="table-head">
               <div>
@@ -1114,6 +1365,56 @@ const filteredData = useMemo(() => {
 
       </main>
     </div>
+  )
+}
+
+function RankingCard({
+  title,
+  subtitle,
+  data,
+  valueKey,
+  valueFormatter,
+  onOpenSku,
+}) {
+  return (
+    <section className="ranking-card">
+      <div className="ranking-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="ranking-list">
+        {data.length === 0 && (
+          <div className="ranking-empty">
+            Nenhum dado encontrado para este período.
+          </div>
+        )}
+
+        {data.map((item, index) => (
+          <button
+            key={`${item.sku}-${index}`}
+            className="ranking-item"
+            onClick={() => onOpenSku(item.sku)}
+          >
+            <span className="ranking-position">#{index + 1}</span>
+
+            <div className="ranking-info">
+              <strong>{item.sku}</strong>
+              <small>{item.produto}</small>
+            </div>
+
+            <div className="ranking-value">
+              <strong>{valueFormatter(item[valueKey])}</strong>
+              <span className={`status-pill ${item.statusClass}`}>
+                {item.status}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 
