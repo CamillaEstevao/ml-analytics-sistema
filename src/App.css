@@ -1707,6 +1707,38 @@ tbody tr:hover {
   color: #15803d !important;
 }
 
+/* =========================================================
+   PERFORMANCE TABLE RESPONSIVO
+========================================================= */
+
+.performance-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 24px;
+}
+
+.performance-table-wrapper::-webkit-scrollbar {
+  height: 10px;
+}
+
+.performance-table-wrapper::-webkit-scrollbar-track {
+  background: #edf2f7;
+  border-radius: 999px;
+}
+
+.performance-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.performance-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.performance-table {
+  min-width: 1250px;
+}
+
 @media (max-width: 900px) {
   .sku-modal .alerts-grid {
     grid-template-columns: 1fr !important;
