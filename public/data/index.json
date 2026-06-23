@@ -1,6 +1,6 @@
 {
-  "atualizado_em": "23/06/2026 10:07",
-  "total_skus": 35,
+  "atualizado_em": "23/06/2026 13:07",
+  "total_skus": 39,
   "arquivos": [
     {
       "sku": "BRINQ-001",
@@ -126,6 +126,26 @@
       "sku": "UTD-033",
       "produto": "Boleira Vittaza sem pé -1740",
       "arquivo": "SKU_UTD-033-BOLEIRA-VITTAZA-SEM-PE-1740.json"
+    },
+    {
+      "sku": "UTD-034",
+      "produto": "Organizador duplo giratorio Multiuso",
+      "arquivo": "SKU_UTD-034-ORGANIZADOR-DUPLO-GIRATORIO-MULTIUSO.json"
+    },
+    {
+      "sku": "UTD-036",
+      "produto": "Organizador Giratório Bambu fruteira",
+      "arquivo": "SKU_UTD-036-ORGANIZADOR-GIRATORIO-BAMBU-FRUTEIRA.json"
+    },
+    {
+      "sku": "UTD-038",
+      "produto": "Organizador Gaveta extensivel madeira",
+      "arquivo": "SKU_UTD-038-ORGANIZADOR-GAVETA-EXTENSIVEL-MADEIRA.json"
+    },
+    {
+      "sku": "UTD-040",
+      "produto": "Tábua Frios Redonda Giratória",
+      "arquivo": "SKU_UTD-040-TABUA-FRIOS-REDONDA-GIRATORIA.json"
     },
     {
       "sku": "UTD-092",
